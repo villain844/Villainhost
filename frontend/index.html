@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Panel Akses Bot</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    input, button { padding: 8px; margin: 5px 0; }
+    #adminPanel { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Tambah Akses</h1>
+  <form id="aksesForm">
+    <input type="text" id="nomor" placeholder="Nomor WhatsApp (+62xxxx)" required><br>
+    <input type="password" id="password" placeholder="Password Akses" required><br>
+    <button type="submit">Kirim</button>
+  </form>
+  <hr>
+  <h2>Login Admin</h2>
+  <form id="adminLoginForm">
+    <input type="text" id="adminUser" placeholder="Username Admin" required><br>
+    <input type="password" id="adminPass" placeholder="Password Admin" required><br>
+    <button type="submit">Login</button>
+  </form>
+
+  <div id="adminPanel">
+    <h3>Panel Admin</h3>
+    <button onclick="loadData()">Refresh Data</button>
+    <pre id="dataTampil"></pre>
+  </div>
+
+  <script>
+    document.getElementById("aksesForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      const nomor = document.getElementById("nomor").value;
+      const password = document.getElementById("password").value;
+      const res = await fetch("/akses", {
+        method: "POST",
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ nomor, password })
+      });
+      alert(await res.text());
+    });
+
+    document.getElementById("adminLoginForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      const username = document.getElementById("adminUser").value;
+      const password = document.getElementById("adminPass").value;
+      const res = await fetch("/admin/login", {
+        method: "POST",
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ username, password })
+      });
+      if (res.ok) {
+        document.getElementById("adminPanel").style.display = "block";
+        alert("Login berhasil");
+      } else {
+        alert("Login gagal");
+      }
+    });
+
+    async function loadData() {
+      const res = await fetch("/admin/data");
+      const data = await res.json();
+      document.getElementById("dataTampil").textContent = JSON.stringify(data, null, 2);
+    }
+  </script>
+</body>
+</html>
